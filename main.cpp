@@ -10,7 +10,7 @@ using namespace std;
 const double LA_440 = 440.0;
 const double LA_432 = 432.0;
 const double TOLERANCE = 1.0;
-const int SPEED_of_your_computer_Min = 5; // Speed in Mb/s, usually 10Mb/s.
+const int SPEED_of_your_computer_Min = 5; // Speed in Mb/s, usually 5Mb/s.
 const int SPEED_of_your_computer_Max = 10; // Speed in Mb/s, usually 10Mb/s.
 
 // Function to read a stereo WAV file and merge channels
