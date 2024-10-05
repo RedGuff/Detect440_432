@@ -5,13 +5,32 @@
 #include <complex>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <vector>
+
 using namespace std;
 
 const double LA_440 = 440.0;
 const double LA_432 = 432.0;
-const double TOLERANCE = 1.0;
-const int SPEED_of_your_computer_Min = 5; // Speed in Mb/s, usually 5Mb/s.
-const int SPEED_of_your_computer_Max = 10; // Speed in Mb/s, usually 10Mb/s.
+vector<double> LA440 = {16744.032,17739.680,18794.544,19912.112,21096.160,22350.592,23679.616,25083.712,26579.488,28160.000,29834.464,31608.512,
+                        8372.016,8869.840,9397.272,9956.056,10548.080,11175.296,11839.808,12541.856,13289.744,14080.000,14917.232,15804.256,
+                        4186.008,4434.920,4698.636,4978.028,5274.040,5587.648,5919.904,6270.928,6644.872,7040.000,7458.616,7902.128,
+                        2093.004,2217.460,2344.318,2489.014,2637.020,2793.824,2959.952,3135.964,3322.436,3520.000,3729.308,3951.064,
+                        1046.502,1108.730,1174.059,1244.507,1318.510,1396.912,1479.976,1567.982,1661.218,1760.000,1864.654,1975.532,
+                        523.251,554.365,587.329,622.253,659.255,698.456,739.988,783.991,830.609,880.000,932.327,987.766,
+                        261.625,277.182,293.664,311.126,329.627,349.228,369.994,391.995,415.304,440.000,466.163,493.883,
+                        130.812,138.591,146.832,155.563,164.813,174.614,184.997,195.997,207.652,220.000,233.081,246.941,
+                        65.406,69.295,73.416,77.781,82.406,87.307,92.498,97.998,103.826,110.000,116.540,123.470,
+                        32.703,34.647,36.708,38.890,41.203,43.653,46.249,48.999,51.913,55.000,58.270,61.735
+                        ,16.351,17.323,18.354,19.445,20.601,21.826,23.124,24.499,25.956,27.500,29.135,30.867
+                       }; // All notes, found on internet, including flat, b and #. // https://musicordes.fr/tableau-frequences-notes/
+
+const double TOLERANCE = 1.0; // Method 1.
+const double TOLERANCE_Min = 0.95; // Method 2.
+const double TOLERANCE_Max = 1.05; // Method 2.
+const int SPEED_of_your_computer_Min = 5; // Speed in Mb/s, usually 5Mb/s. Monothread.
+const int SPEED_of_your_computer_Max = 10; // Speed in Mb/s, usually 10Mb/s. Monothread.
+
+
 
 // Function to read a stereo WAV file and merge channels
 vector<double> read_wav(const string& filename) {
@@ -107,7 +126,7 @@ double find_dominant_frequency(const vector<double>& samples, int sample_rate) {
 }
 
 // Function to determine if the dominant frequency matches LA440 or LA432
-void check_tuning(double frequency) {
+void check_tuning1(double frequency) {
     if (abs(frequency - LA_440) <= TOLERANCE) {
         cout << "The track is tuned to A4 = 440Hz." << endl;
     } else if (abs(frequency - LA_432) <= TOLERANCE) {
@@ -118,10 +137,19 @@ void check_tuning(double frequency) {
     }
 }
 
+void check_tuning2(double frequency) {
+   for (long unsigned int freq = 0;freq<LA440.size(); freq++){ // LA440.size() not included.
+   if ((frequency/LA440[freq]<TOLERANCE_Max)&&(frequency/LA440[freq]>TOLERANCE_Min)){ // If note is good.
+   cout << "Tune is probably around " <<  440*(frequency/LA440[freq])<< "."<< endl;
+   }
+
+   }
+}
+
 long long getFileSize(const string& filename) {
     ifstream file(filename, ios::binary); // Ouvre le fichier en mode binaire
     if (!file) {
-       // cerr << "Erreur d'ouverture du fichier." << endl;
+        // cerr << "Erreur d'ouverture du fichier." << endl;
         cerr << "Impossible to open the file" << filename <<"!" << endl;
         return -1; // Erreur si le fichier n'existe pas
     }
@@ -206,10 +234,10 @@ int main(int argc, char* argv[]) { // Ok.
     cout << "File name is: " << filename << endl;  // Debug line to display the file name
     long long sizeL = getFileSize(filename);
     cout << "Size:" << sizeL << " octets." << endl;
-    cout << "About " << SPEED_of_your_computer_Min << " to " << SPEED_of_your_computer_Max << "Mb/s to calculate. \It depends of the power of your computer." << endl;
+    cout << "About " << SPEED_of_your_computer_Min << " to " << SPEED_of_your_computer_Max << "Mb/s to calculate. \nIt depends of the power of your computer." << endl;
     cout << "About " << sizeL/(SPEED_of_your_computer_Max *1000000.0) << " to " << sizeL/(SPEED_of_your_computer_Min *1000000.0)<< " seconds to calculate." << endl;
     cout << "Don't worry about a slight deviation from your planned frequency:\nthe calculations are approximate." << endl;
-
+cout << "I work with the dominant frequency only.\nIf you have percutions in your music, or white noise, it's a bad choice." << endl;
 
     int sample_rate = 44100; // For simplicity, assume 44.1 kHz
     // Step 1: Read the WAV file
@@ -218,11 +246,14 @@ int main(int argc, char* argv[]) { // Ok.
     // Step 2: Find the dominant frequency
     double dominant_frequency = find_dominant_frequency(samples, sample_rate);
 // cout << "Dominant frequency around 440Hz = " << dominant_frequency << endl;
-
     cout << "Dominant frequency = " << dominant_frequency << endl;
+cout << "Method 1:" << endl;
     double corrected_frequency = correction(dominant_frequency);
     // Step 3: Check if it matches A440 or A432
     cout << "Corrected frequency = " << corrected_frequency << endl;
-    check_tuning(corrected_frequency);
+
+    check_tuning1(corrected_frequency);
+cout << "Method 2:" << endl;
+check_tuning2(dominant_frequency);
     return 0;
 }
