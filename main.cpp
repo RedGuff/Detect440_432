@@ -3,12 +3,15 @@
 #include <cmath>
 #include <fstream>
 #include <complex>
-
+#include <sys/stat.h>
+#include <unistd.h>
 using namespace std;
 
 const double LA_440 = 440.0;
 const double LA_432 = 432.0;
 const double TOLERANCE = 1.0;
+const int SPEED_of_your_computer_Min = 5; // Speed in Mb/s, usually 10Mb/s.
+const int SPEED_of_your_computer_Max = 10; // Speed in Mb/s, usually 10Mb/s.
 
 // Function to read a stereo WAV file and merge channels
 vector<double> read_wav(const string& filename) {
@@ -88,7 +91,7 @@ double find_dominant_frequency(const vector<double>& samples, int sample_rate) {
     // Perform FFT
     fft(data);
 
-    // Find the frequency with the maximum magnitude
+    // Find the frequency with the maximum magnitude // Of other... ???
     double max_magnitude = 0.0;
     size_t max_index = 0;
     for (size_t i = 0; i < N / 2; ++i) {
@@ -106,34 +109,120 @@ double find_dominant_frequency(const vector<double>& samples, int sample_rate) {
 // Function to determine if the dominant frequency matches LA440 or LA432
 void check_tuning(double frequency) {
     if (abs(frequency - LA_440) <= TOLERANCE) {
-        cout << "The track is tuned to A440 Hz." << endl;
+        cout << "The track is tuned to A4 = 440Hz." << endl;
     } else if (abs(frequency - LA_432) <= TOLERANCE) {
-        cout << "The track is tuned to A432 Hz." << endl;
+        cout << "The track is tuned to A4 = 432Hz." << endl;
     } else {
-        cout << "The track is not tuned to A440 or A432 Hz." << endl;
+        cout << "The track seems not be tuned to A4 = 440Hz or 432Hz, or I'm stupid." << endl;
+        cout << "I'm probably stupid." << endl;
     }
 }
 
-int main(int argc, char* argv[]) {
-    if (argc < 2) {
-        cerr << "Usage: " << argv[0] << " <audio_file.wav>" << endl;
-        return 1;
+long long getFileSize(const string& filename) {
+    ifstream file(filename, ios::binary); // Ouvre le fichier en mode binaire
+    if (!file) {
+       // cerr << "Erreur d'ouverture du fichier." << endl;
+        cerr << "Impossible to open the file" << filename <<"!" << endl;
+        return -1; // Erreur si le fichier n'existe pas
     }
 
-    string filename = argv[1];
-    int sample_rate = 44100; // For simplicity, assume 44.1 kHz
+    // Déplace le pointeur à la fin du fichier
+    file.seekg(0, ios::end);
+    // Récupère la position actuelle du pointeur (taille du fichier)
+    long long size = file.tellg();
+    file.close(); // Ferme le fichier
+    return size; // Retourne la taille du fichier
+}
 
+string ajouterExtension(const string& nomFichier, string extension = ".wav") {
+    if (nomFichier.size() >= extension.size() &&
+            nomFichier.compare(nomFichier.size() - extension.size(), extension.size(), extension) == 0) {
+        return nomFichier;  // L'extension est déjà présente
+    } else {
+        return nomFichier + extension;  // Ajoute l'extension.
+    }
+}
+
+bool exists_test3 (const std::string& name) { // https://stackoverflow-com.translate.goog/questions/12774207/fastest-way-to-check-if-a-file-exists-using-standard-c-c11-14-17-c
+    struct stat buffer;
+    return (stat (name.c_str(), &buffer) == 0);
+}
+
+double correction(double frequency) { // Horrible method, but why not.
+    if (frequency<16) { // Included "negative". What a horrible mistake!
+        cerr << "Infrasound!" << endl;
+    } else if (frequency>20000) {
+        cerr << "Ultrasound!" << endl;
+    } else {
+        clog << "Normal sound." << endl;
+        while (frequency<400) {
+            frequency = frequency*2;
+        }
+        while (frequency>600) {
+            frequency = frequency/2;
+        }
+    }
+    return frequency;
+}
+
+int main(int argc, char* argv[]) { // Ok.
+    string filename0 = "";
+    if (argc < 2) {
+        //    cerr << "Usage: " << argv[0] << " <audio_file.wav>" << endl;
+        cout << "Name of the file?" << endl;
+
+        cin >>  filename0;
+        // return 1;
+    } else {
+        filename0 = argv[1];
+    }
+    string filename = "";
+    if (exists_test3(filename0)) {
+        filename = filename0;
+    } else if(exists_test3(ajouterExtension(filename0, ".wav"))) {
+        filename=ajouterExtension(filename0, ".wav");
+    } else if(exists_test3(ajouterExtension(filename0, ".mp3"))) {
+        cout << "I found " << ajouterExtension(filename0, ".mp3");
+        cerr << ", but I can't read MP3 files!" << endl;
+        return -1;
+    } else if(exists_test3(ajouterExtension(filename0, ".aac"))) {
+        cout << "I found " << ajouterExtension(filename0, ".aac");
+        cerr << ", but I can't read AAC files!" << endl;
+        return -1;
+    } else if(exists_test3(ajouterExtension(filename0, ".m4a"))) {
+        cout << "I found " << ajouterExtension(filename0, ".m4a");
+        cerr << ", but I can't read M4A files!" << endl;
+        return -1;
+    } else if(exists_test3(ajouterExtension(filename0, ".opus"))) {
+        cout << "I found " << ajouterExtension(filename0, ".opus");
+        cerr << ", but I can't read OPUS files!" << endl;
+        return -1;
+    } else {
+        cerr << "File do NOT exist! I tried to add \".wav\", but I failed to find the file!" << endl;
+        return -1;
+    }
+
+// filename0 can be deleted.
     cout << "File name is: " << filename << endl;  // Debug line to display the file name
+    long long sizeL = getFileSize(filename);
+    cout << "Size:" << sizeL << " octets." << endl;
+    cout << "About " << SPEED_of_your_computer_Min << " to " << SPEED_of_your_computer_Max << "Mb/s to calculate. \It depends of the power of your computer." << endl;
+    cout << "About " << sizeL/(SPEED_of_your_computer_Max *1000000.0) << " to " << sizeL/(SPEED_of_your_computer_Min *1000000.0)<< " seconds to calculate." << endl;
+    cout << "Don't worry about a slight deviation from your planned frequency:\nthe calculations are approximate." << endl;
 
+
+    int sample_rate = 44100; // For simplicity, assume 44.1 kHz
     // Step 1: Read the WAV file
     vector<double> samples = read_wav(filename);
 
     // Step 2: Find the dominant frequency
     double dominant_frequency = find_dominant_frequency(samples, sample_rate);
-cout << "Dominant frequency around 440Hz = " << dominant_frequency << endl;
-cout << "Don't worry about a slight deviation from your planned frequency: the calculations are approximate." << endl;
-    // Step 3: Check if it matches A440 or A432
-    check_tuning(dominant_frequency);
+// cout << "Dominant frequency around 440Hz = " << dominant_frequency << endl;
 
+    cout << "Dominant frequency = " << dominant_frequency << endl;
+    double corrected_frequency = correction(dominant_frequency);
+    // Step 3: Check if it matches A440 or A432
+    cout << "Corrected frequency = " << corrected_frequency << endl;
+    check_tuning(corrected_frequency);
     return 0;
 }
